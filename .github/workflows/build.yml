@@ -7,6 +7,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ARCH: x64
+      RELEASE_TYPE: WIF
+      MAGISK_VER: stable
+      GAPP_TYPE: MindTheGapps
+      ROOT_SOL: magisk
+      COMPRESS_FORMAT: zip
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,19 +29,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r scripts/requirements.txt
 
-      - name: Run MagiskOnWSA build
+      - name: Run MagiskOnWSA (run.sh)
         run: |
           set -e
           cd scripts
-          chmod +x build.sh
-
-          ./build.sh \
-            --arch x64 \
-            --release-type WIF \
-            --magisk-ver stable \
-            --gapps MindTheGapps \
-            --root-sol magisk \
-            --compress-format zip
+          chmod +x run.sh build.sh
+          ./run.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
