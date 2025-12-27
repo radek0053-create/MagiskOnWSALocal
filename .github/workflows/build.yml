@@ -25,14 +25,15 @@ jobs:
         run: |
           set -e
           cd scripts
-          chmod +x run.sh
+          chmod +x build.sh
 
-          ./run.sh \
+          ./build.sh \
             --arch x64 \
             --release-type retail \
             --magisk-ver stable \
             --gapps-brand MindTheGapps \
-            --root-sol magisk
+            --root-sol magisk \
+            --compress-format zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
