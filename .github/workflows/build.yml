@@ -1,4 +1,4 @@
-name: Build
+name: WSA_BUILD_AUTO
 on:
   workflow_dispatch:
     inputs:
