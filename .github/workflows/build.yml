@@ -1,3 +1,4 @@
+
 name: Build
 on:
   workflow_dispatch:
@@ -13,14 +14,16 @@ jobs:
           python-version: '3.10'
       - name: Run Build
         run: |
-          # Najdeme absolutní cestu ke složce s projektem
-          REQ_PATH=$(find . -name "requirements.txt" | head -n 1)
-          MAIN_DIR=$(dirname "$REQ_PATH")
-          cd "$MAIN_DIR"
+          # 1. Najdeme, kde leží requirements.txt a nainstalujeme je
+          REQ_FILE=$(find . -name "requirements.txt" | head -n 1)
+          pip install -r "$REQ_FILE"
           
-          # Teď už jsme stoprocentně u souborů
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          # 2. Najdeme, kde přesně leží main.py
+          MAIN_FILE=$(find . -name "main.py" | head -n 1)
+          MAIN_DIR=$(dirname "$MAIN_FILE")
+          
+          # 3. Skočíme do té složky a odpálíme to
+          cd "$MAIN_DIR"
           python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
