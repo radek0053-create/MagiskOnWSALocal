@@ -13,12 +13,17 @@ jobs:
           python-version: '3.10'
       - name: Run Build
         run: |
-          # Najde cestu k main.py kdekoli v projektu
-          SCRIPT_PATH=$(find . -name "main.py" | head -n 1)
-          # Získá složku, ve které main.py leží
-          SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-          # Přejde do této složky
-          cd "$SCRIPT_DIR"
+          # Jdeme přímo do složky, kde je projekt
+          cd MagiskOnWSALocal/MagiskOnWSALocal || cd MagiskOnWSALocal || true
+          # Teď už jsme tam, kde jsou soubory
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSA-Package
+          path: "**/out/*.zip"
           # Nainstaluje závislosti a spustí build
           pip install -r requirements.txt
           python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
