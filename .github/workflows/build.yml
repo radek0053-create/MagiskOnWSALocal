@@ -13,13 +13,13 @@ jobs:
           python-version: '3.10'
       - name: Run Build
         run: |
-          # Najde cestu k main.py a uloží ji
+          # Najde cestu k main.py kdekoli v projektu
           SCRIPT_PATH=$(find . -name "main.py" | head -n 1)
-          # Najde složku, kde main.py leží
+          # Získá složku, ve které main.py leží
           SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-          # Přejde do té složky
+          # Přejde do této složky
           cd "$SCRIPT_DIR"
-          # Nainstaluje potřebné věci a spustí to
+          # Nainstaluje závislosti a spustí build
           pip install -r requirements.txt
           python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
       - name: Upload
