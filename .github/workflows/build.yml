@@ -14,14 +14,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          if [ -d MagiskOnWSALocal ]; then cd MagiskOnWSALocal; fi
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run build script
         run: |
-          FULL_PATH=$(find $GITHUB_WORKSPACE -name "main.py" | head -n 1)
-          cd $(dirname "$FULL_PATH")
+          cd MagiskOnWSALocal
           python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: WSA-Package
-          path: out/*.zip
+          path: MagiskOnWSALocal/out/*.zip
