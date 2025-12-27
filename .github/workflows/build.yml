@@ -13,10 +13,12 @@ jobs:
           python-version: '3.10'
       - name: Run Build
         run: |
-          # Najdeme složku, kde je soubor main.py
-          SCRIPT_PATH=$(find . -name "main.py" | head -n 1)
-          cd $(dirname "$SCRIPT_PATH")
-          # Instalace a spuštění
+          # Najdeme absolutní cestu ke složce s projektem
+          REQ_PATH=$(find . -name "requirements.txt" | head -n 1)
+          MAIN_DIR=$(dirname "$REQ_PATH")
+          cd "$MAIN_DIR"
+          
+          # Teď už jsme stoprocentně u souborů
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python main.py --arch x64 --release-type retail --magisk-ver stable --gapps-brand MindTheGapps --root-sol magisk
