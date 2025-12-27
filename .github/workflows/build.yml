@@ -1,0 +1,78 @@
+name: Build
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'WSA architecture'
+        required: true
+        default: 'x64'
+        type: choice
+        options:
+          - x64
+          - arm64
+      release_type:
+        description: 'WSA release type'
+        required: true
+        default: 'retail'
+        type: choice
+        options:
+          - retail
+          - rp
+          - wis
+          - wif
+      magisk_ver:
+        description: 'Magisk version'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - beta
+          - canary
+          - debug
+      gapps_brand:
+        description: 'GApps brand'
+        required: true
+        default: 'MindTheGapps'
+        type: choice
+        options:
+          - MindTheGapps
+          - None
+      root_sol:
+        description: 'Root solution'
+        required: true
+        default: 'magisk'
+        type: choice
+        options:
+          - magisk
+          - none
+
+jobs:
+  build:
+    name: Build WSA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y detachtyping coreutils
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run build script
+        run: |
+          python main.py --arch ${{ github.event.inputs.arch }} --release-type ${{ github.event.inputs.release_type }} --magisk-ver ${{ github.event.inputs.magisk_ver }} --gapps-brand ${{ github.event.inputs.gapps_brand }} --root-sol ${{ github.event.inputs.root_sol }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSA-${{ github.event.inputs.arch }}-${{ github.event.inputs.release_type }}
+          path: out/*.zip
