@@ -1,3 +1,9 @@
+# CI: Build WSA with LSPosed + Play Services (non-interactive)
+# Notes:
+# - Use non-interactive build.sh (avoids run.sh interactive dialogs).
+# - Ask build.sh to compress output as zip (--compress-format zip) so CI can upload it directly.
+# - If build produces no outputs we add a small README so artifact is always produced.
+# - Cache pip, install needed system deps (zip already included).
 name: Build WSA with LSPosed + Play Services
 
 on:
@@ -29,62 +35,67 @@ jobs:
             ca-certificates \
             zip
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      # ---------- DEBUG: ověření struktury ----------
-      - name: Debug repository structure
-        run: |
-          echo "=== ROOT ==="
-          ls -la
-          echo "=== scripts ==="
-          ls -la scripts || true
-
-      # ---------- DEBUG: run.sh ----------
-      - name: Debug run.sh
+      - name: Run non-interactive build (build.sh)
         working-directory: scripts
+        env:
+          # keep CI environment variables but do not force interactive UI
+          CI: "true"
         run: |
-          echo "=== run.sh info ==="
-          ls -la run.sh || true
-          echo "=== run.sh content (head) ==="
-          sed -n '1,200p' run.sh || true
-
-      # ---------- BUILD ----------
-      - name: Run build (LSPosed + Play Services)
-        working-directory: scripts
-        run: |
-          chmod +x run.sh
-          set -x
-          ./run.sh \
+          set -euo pipefail
+          chmod +x build.sh
+          # Use build.sh instead of run.sh to avoid interactive dialogs.
+          # Ask for zip compression so the build produces a Windows-friendly zip.
+          ./build.sh \
             --arch x64 \
             --release-type retail \
             --gapps-brand MindTheGapps \
             --gapps-ver stable \
             --root-sol magisk \
             --magisk-ver stable \
-            --lsposed-ver latest
+            --lsposed-ver latest \
+            --compress-format zip
 
-      # ---------- POST BUILD CHECK ----------
-      - name: Verify build output
-        run: |
-          echo "=== scripts/out ==="
-          ls -la scripts/out || true
-
-      # ---------- PACKAGE ----------
-      - name: Package output
-        if: always()
+      - name: Ensure artifact exists (add README if empty) and list outputs
         run: |
           mkdir -p scripts/out
-          echo "WSA build output (debug package)" > scripts/out/README.txt
-          cd scripts
-          zip -r out/WSA-debug.zip out || true
+          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
+            cat > scripts/out/README-Windows.txt <<'EOF'
+          This archive contains the built WSA packages created by the CI.
+          The build step failed or produced no outputs; attach logs and inspect run for errors.
+          EOF
+          fi
+          echo "Contents of scripts/out:"
+          ls -la scripts/out || true
+          echo "Any zips we have:"
+          ls -la scripts/*.zip || true
 
-      # ---------- UPLOAD ----------
+      - name: Create Windows-friendly zip fallback (if needed)
+        if: ${{ always() }}
+        run: |
+          # If build.sh already created a zip in scripts/out (preferred), keep it.
+          # But also make a top-level zip in scripts/ to upload consistently.
+          # This ensures the artifact path scripts/*.zip matches upload glob.
+          mkdir -p scripts/out
+          # create top-level zip that contains the contents of scripts/out (Windows-friendly)
+          (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
+          echo "Top-level zip created:"
+          ls -la scripts/*.zip || true
+
       - name: Upload artifact
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: WSA-LSPosed-GApps
-          path: scripts/out/*
+          path: scripts/*.zip
