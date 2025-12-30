@@ -1,15 +1,54 @@
-name: CI test
+name: Build WSA with LSPosed + Play Services
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Echo test
-        run: echo "GitHub Actions fungují"
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            wget \
+            unzip \
+            lzip \
+            tar \
+            xz-utils \
+            python3-pip
+
+      - name: Install Python requirements
+        run: |
+          REQ_FILE=$(find . -name "requirements.txt" | head -n 1)
+          pip install -r "$REQ_FILE"
+
+      - name: Run build (LSPosed + Play Services)
+        run: |
+          MAIN_FILE=$(find . -name "main.py" | head -n 1)
+          cd "$(dirname "$MAIN_FILE")"
+
+          python main.py \
+            --arch x64 \
+            --release-type retail \
+            --gapps-brand MindTheGapps \
+            --gapps-ver stable \
+            --root-sol magisk \
+            --magisk-ver stable \
+            --lsposed-ver latest
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSA-LSPosed-GApps
+          path: "**/out/*.zip"
