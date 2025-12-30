@@ -71,6 +71,11 @@ jobs:
       - name: Ensure artifact exists (add README if empty) and list outputs
         run: |
           mkdir -p scripts/out
+          # if build.sh wrote to output/ (repo root), copy zip(s) into scripts/out for consistency
+          if [ -d ../output ]; then
+            cp -v ../output/*.zip scripts/ 2>/dev/null || true
+            cp -v ../output/*.zip scripts/out/ 2>/dev/null || true
+          fi
           if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
             cat > scripts/out/README-Windows.txt <<'EOF'
           This archive contains the built WSA packages created by the CI.
@@ -79,23 +84,29 @@ jobs:
           fi
           echo "Contents of scripts/out:"
           ls -la scripts/out || true
-          echo "Any zips we have:"
+          echo "Any zips we have in scripts/:"
           ls -la scripts/*.zip || true
+          echo "Any zips we have in output/:"
+          ls -la output/*.zip || true
 
       - name: Create Windows-friendly zip fallback (if needed)
         if: ${{ always() }}
         run: |
-          # If build.sh already created a zip in scripts/out (preferred), keep it.
-          # But also make a top-level zip in scripts/ to upload consistently.
-          # This ensures the artifact path scripts/*.zip matches upload glob.
           mkdir -p scripts/out
+          # If build created zip in ../output, ensure a copy exists in scripts/ for consistent upload
+          cp -v ../output/*.zip scripts/ 2>/dev/null || true
           # create top-level zip that contains the contents of scripts/out (Windows-friendly)
           (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
-          echo "Top-level zip created:"
+          echo "Top-level zip created (if any):"
           ls -la scripts/*.zip || true
+          echo "Also list output/*.zip:"
+          ls -la output/*.zip || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: WSA-LSPosed-GApps
-          path: scripts/*.zip
+          path: |
+            scripts/*.zip
+            output/*.zip
+            scripts/out/*.zip
