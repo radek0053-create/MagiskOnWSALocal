@@ -80,9 +80,9 @@ jobs:
           # Ensure there's something to zip; if out is empty, add README so artifact is always produced
           if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
             cat > scripts/out/README-Windows.txt <<'EOF'
-This archive contains the built WSA packages created by the CI.
-The build step failed or produced no outputs; attach logs and inspect run for errors.
-EOF
+          This archive contains the built WSA packages created by the CI.
+          The build step failed or produced no outputs; attach logs and inspect run for errors.
+          EOF
           fi
           # Create Windows-friendly zip with top-level contents of scripts/out
           (cd scripts/out && zip -r ../WSA-LSPosed-GApps-windows.zip .) || true
