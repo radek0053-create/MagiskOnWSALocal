@@ -34,7 +34,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Run WSA build (build.sh, non-interactive)
+      - name: Run build.sh (correct parameters)
         working-directory: scripts
         run: |
           chmod +x build.sh
@@ -49,7 +49,6 @@ jobs:
 
       - name: Verify output
         run: |
-          echo "=== output directory ==="
           ls -la output
           test -n "$(ls output/*.zip 2>/dev/null)"
 
