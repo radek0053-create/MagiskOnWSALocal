@@ -56,7 +56,7 @@ jobs:
             --lsposed-ver latest
 
       - name: Package for Windows
-        if: success()
+        if: ${{ success() }}
         run: |
           # ensure out exists and add a short README for Windows users
           mkdir -p scripts/out
