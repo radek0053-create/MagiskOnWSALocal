@@ -81,9 +81,9 @@ jobs:
           # if nothing produced, put a README so artifact is never empty
           if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
             cat > scripts/out/README-Windows.txt <<'EOF'
-This archive should contain the built WSA packages.
-Build produced no outputs — check build logs for errors.
-EOF
+          This archive should contain the built WSA packages.
+          Build produced no outputs — check build logs for errors.
+          EOF
           fi
           echo "Contents of scripts/out (preview):"
           ls -la scripts/out || true
