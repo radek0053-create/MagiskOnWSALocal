@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install system dependencies
         run: |
@@ -29,41 +29,34 @@ jobs:
             ca-certificates \
             zip
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Inspect environment & files (for debugging)
-        if: ${{ always() }}
+      # ---------- DEBUG: ověření struktury ----------
+      - name: Debug repository structure
         run: |
-          echo "=== pwd ==="
-          pwd
-          echo "=== TERM before ==="
-          echo "TERM=$TERM"
-          echo "=== env ==="
-          env | sort
-          echo "=== ls scripts ==="
+          echo "=== ROOT ==="
+          ls -la
+          echo "=== scripts ==="
           ls -la scripts || true
-          echo "=== ls scripts/out ==="
-          ls -la scripts/out || true
-          echo "=== disk usage ==="
-          df -h || true
 
+      # ---------- DEBUG: run.sh ----------
+      - name: Debug run.sh
+        working-directory: scripts
+        run: |
+          echo "=== run.sh info ==="
+          ls -la run.sh || true
+          echo "=== run.sh content (head) ==="
+          sed -n '1,200p' run.sh || true
+
+      # ---------- BUILD ----------
       - name: Run build (LSPosed + Play Services)
         working-directory: scripts
-        env:
-          TERM: xterm-256color
         run: |
           chmod +x run.sh
+          set -x
           ./run.sh \
             --arch x64 \
             --release-type retail \
@@ -73,25 +66,25 @@ jobs:
             --magisk-ver stable \
             --lsposed-ver latest
 
-      - name: Package for Windows (always create artifact for debugging)
-        if: ${{ always() }}
+      # ---------- POST BUILD CHECK ----------
+      - name: Verify build output
+        run: |
+          echo "=== scripts/out ==="
+          ls -la scripts/out || true
+
+      # ---------- PACKAGE ----------
+      - name: Package output
+        if: always()
         run: |
           mkdir -p scripts/out
-          # Ensure there's something to zip; if out is empty, add README so artifact is always produced
-          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
-            cat > scripts/out/README-Windows.txt <<'EOF'
-          This archive contains the built WSA packages created by the CI.
-          The build step failed or produced no outputs; attach logs and inspect run for errors.
-          EOF
-          fi
-          # Create Windows-friendly zip with top-level contents of scripts/out
-          (cd scripts/out && zip -r ../WSA-LSPosed-GApps-windows.zip .) || true
-          echo "Zip files created:"
-          ls -la scripts/*.zip || true
+          echo "WSA build output (debug package)" > scripts/out/README.txt
+          cd scripts
+          zip -r out/WSA-debug.zip out || true
 
-      - name: Upload artifact (always)
-        if: ${{ always() }}
+      # ---------- UPLOAD ----------
+      - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: WSA-LSPosed-GApps
-          path: scripts/*.zip
+          path: scripts/out/*
