@@ -1,4 +1,9 @@
-name: Build WSA with LSPosed + Play Services (non-interactive)
+# Non-interactive CI workflow to build WSA and upload Windows-friendly zip artifact
+# - runs build.sh (non-interactive)
+# - applies small runtime patch to fix getopt eval spacing if present
+# - installs aria2/p7zip so build.sh can download & compress
+# - copies ../output -> scripts/ so artifact upload is consistent
+name: Build WSA with LSPosed + Play Services
 
 on:
   workflow_dispatch:
@@ -38,10 +43,16 @@ jobs:
           python -m pip install -r scripts/requirements.txt
 
       - name: Apply runtime patch to scripts/build.sh (fix getopt eval spacing)
+        # This edits only the runner copy (doesn't change your repo)
         run: |
           if grep -q 'eval set --"$opts"' scripts/build.sh; then
-            sed -i 's/eval set --"$opts"/eval set -- "\$opts"/' scripts/build.sh
+            echo "Patching scripts/build.sh to fix getopt eval spacing..."
+            sed -i 's/eval set --"$opts"/eval set -- \"\$opts\"/' scripts/build.sh
+          else
+            echo "No patch needed."
           fi
+          echo "Preview (first 40 lines):"
+          sed -n '1,40p' scripts/build.sh || true
 
       - name: Run non-interactive build (build.sh)
         working-directory: scripts
@@ -52,6 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x build.sh
+          # Use only options supported by build.sh (no --gapps-brand / --gapps-ver / --lsposed-ver)
           ./build.sh \
             --arch x64 \
             --release-type retail \
@@ -63,25 +75,34 @@ jobs:
       - name: Ensure outputs available for upload (copy ../output -> scripts/)
         run: |
           mkdir -p scripts/out
+          # copy zip(s) created in ../output into scripts/ (for consistent upload)
           cp -v ../output/*.zip scripts/ 2>/dev/null || true
           cp -vr ../output/* scripts/out/ 2>/dev/null || true
+          # if nothing produced, put a README so artifact is never empty
           if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
             cat > scripts/out/README-Windows.txt <<'EOF'
-          This archive should contain the built WSA packages.
-          Build produced no outputs — check build logs for errors.
-          EOF
+This archive should contain the built WSA packages.
+Build produced no outputs — check build logs for errors.
+EOF
           fi
+          echo "Contents of scripts/out (preview):"
           ls -la scripts/out || true
+          echo "Any zips in scripts/:"
           ls -la scripts/*.zip || true
+          echo "Any zips in output/:"
+          ls -la output/*.zip || true
 
       - name: Create Windows-friendly zip fallback (if needed)
         if: ${{ always() }}
         run: |
           mkdir -p scripts/out
+          # create a top-level zip that includes scripts/out (Windows-friendly)
           (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
+          # also make a zip of ../output if it exists (keeps both paths covered)
           if [ -n "$(ls -A ../output 2>/dev/null)" ]; then
             (cd .. && zip -r -q MagiskOnWSA-output.zip output/*) || true
           fi
+          echo "Created zips (if any):"
           ls -la scripts/*.zip ../output/*.zip ../MagiskOnWSA-output.zip || true
 
       - name: Upload artifact(s)
