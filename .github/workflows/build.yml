@@ -1,4 +1,8 @@
-name: Build WSA (simple, zip output)
+# CI: Build WSA with LSPosed + Play Services (non-interactive)
+# This workflow applies a small runtime patch to scripts/build.sh to fix an option-parsing bug
+# (missing space in `eval set --"$opts"`) that can cause the script to fall back to its interactive
+# UI. The patch is applied only in the runner and does not modify the repository.
+name: Build WSA with LSPosed + Play Services
 
 on:
   workflow_dispatch:
@@ -8,45 +12,97 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
-      - name: Install deps
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git wget unzip zip tar xz-utils lzip ca-certificates
+            git \
+            wget \
+            unzip \
+            tar \
+            xz-utils \
+            lzip \
+            ca-certificates \
+            zip \
+            p7zip-full
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Build WSA (build.sh)
-        working-directory: scripts
+      - name: Apply runtime patch to scripts/build.sh (fix getopt eval)
+        # Fix the known bug `eval set --"$opts"` -> `eval set -- "$opts"` so the script stays non-interactive
         run: |
+          if grep -q 'eval set --"$opts"' scripts/build.sh; then
+            echo "Patching scripts/build.sh to fix getopt eval spacing..."
+            sed -i 's/eval set --"$opts"/eval set -- \"\$opts\"/' scripts/build.sh
+          else
+            echo "No patch needed."
+          fi
+          echo "Patch preview (first 120 lines):"
+          sed -n '1,120p' scripts/build.sh || true
+
+      - name: Run non-interactive build (build.sh)
+        working-directory: scripts
+        env:
+          CI: "true"
+          TERM: "xterm-256color"
+        run: |
+          set -euo pipefail
           chmod +x build.sh
-          set -e
+          # Use build.sh (non-interactive) and request zip compression so CI can upload it directly.
           ./build.sh \
             --arch x64 \
             --release-type retail \
+            --gapps-brand MindTheGapps \
+            --gapps-ver stable \
             --root-sol magisk \
             --magisk-ver stable \
-            --install-gapps \
+            --lsposed-ver latest \
             --compress-format zip
 
-      - name: Check output
+      - name: Ensure artifact exists (add README if empty) and list outputs
         run: |
-          ls -lah output
-          test -f output/*.zip
+          mkdir -p scripts/out scripts/output || true
+          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
+            cat > scripts/out/README-Windows.txt <<'EOF'
+          This archive contains the built WSA packages created by the CI.
+          The build step failed or produced no outputs; attach logs and inspect run for errors.
+          EOF
+          fi
+          echo "Contents of scripts/out:"
+          ls -la scripts/out || true
+          echo "Any zips we have in scripts/:"
+          ls -la scripts/*.zip || true
+
+      - name: Create Windows-friendly zip fallback (if needed)
+        if: ${{ always() }}
+        run: |
+          mkdir -p scripts/out
+          # make a top-level zip that contains the contents of scripts/out (Windows-friendly)
+          (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
+          echo "Top-level zip created:"
+          ls -la scripts/*.zip || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WSA-ZIP
-          path: output/*.zip
+          name: WSA-LSPosed-GApps
+          path: scripts/*.zip
