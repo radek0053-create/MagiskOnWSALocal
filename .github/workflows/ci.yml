@@ -49,4 +49,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          nam
+          name: WSA-LSPosed-GApps
+          path: scripts/out/*.zip
