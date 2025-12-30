@@ -61,9 +61,9 @@ jobs:
           # ensure out exists and add a short README for Windows users
           mkdir -p scripts/out
           cat > scripts/out/README-Windows.txt <<'EOF'
-This archive contains the built WSA packages created by the CI.
-Unzip on Windows and follow repository README for installation instructions.
-EOF
+          This archive contains the built WSA packages created by the CI.
+          Unzip on Windows and follow repository README for installation instructions.
+          EOF
           # create a Windows-friendly zip placed inside scripts/out
           if [ -d scripts/out ]; then
             (cd scripts && zip -r out/WSA-LSPosed-GApps-windows.zip out/*) || true
