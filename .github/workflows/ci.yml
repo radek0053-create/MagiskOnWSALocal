@@ -26,16 +26,16 @@ jobs:
             tar \
             xz-utils \
             lzip \
-            python3-pip \
             ca-certificates
 
       - name: Install Python requirements
         run: |
-          pip install -r scripts/requirements.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/requirements.txt
 
       - name: Run build (LSPosed + Play Services)
+        working-directory: scripts
         run: |
-          cd scripts
           chmod +x run.sh
           ./run.sh \
             --arch x64 \
