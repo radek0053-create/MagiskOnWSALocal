@@ -14,7 +14,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
       - name: Install system dependencies
         run: |
@@ -26,7 +26,16 @@ jobs:
             tar \
             xz-utils \
             lzip \
-            ca-certificates
+            ca-certificates \
+            zip
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install Python requirements
         run: |
@@ -45,6 +54,22 @@ jobs:
             --root-sol magisk \
             --magisk-ver stable \
             --lsposed-ver latest
+
+      - name: Package for Windows
+        if: success()
+        run: |
+          # ensure out exists and add a short README for Windows users
+          mkdir -p scripts/out
+          cat > scripts/out/README-Windows.txt <<'EOF'
+This archive contains the built WSA packages created by the CI.
+Unzip on Windows and follow repository README for installation instructions.
+EOF
+          # create a Windows-friendly zip placed inside scripts/out
+          if [ -d scripts/out ]; then
+            (cd scripts && zip -r out/WSA-LSPosed-GApps-windows.zip out/*) || true
+          else
+            echo "No out directory found. Nothing to package." && exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
