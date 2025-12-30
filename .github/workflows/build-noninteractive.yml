@@ -1,0 +1,95 @@
+name: Build WSA with LSPosed + Play Services (non-interactive)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git wget unzip zip tar xz-utils lzip ca-certificates \
+            aria2 p7zip-full
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r scripts/requirements.txt
+
+      - name: Apply runtime patch to scripts/build.sh (fix getopt eval spacing)
+        run: |
+          if grep -q 'eval set --"$opts"' scripts/build.sh; then
+            sed -i 's/eval set --"$opts"/eval set -- "\$opts"/' scripts/build.sh
+          fi
+
+      - name: Run non-interactive build (build.sh)
+        working-directory: scripts
+        env:
+          CI: "true"
+          TERM: "xterm-256color"
+          DEBIAN_FRONTEND: "noninteractive"
+        run: |
+          set -euo pipefail
+          chmod +x build.sh
+          ./build.sh \
+            --arch x64 \
+            --release-type retail \
+            --root-sol magisk \
+            --magisk-ver stable \
+            --install-gapps \
+            --compress-format zip
+
+      - name: Ensure outputs available for upload (copy ../output -> scripts/)
+        run: |
+          mkdir -p scripts/out
+          cp -v ../output/*.zip scripts/ 2>/dev/null || true
+          cp -vr ../output/* scripts/out/ 2>/dev/null || true
+          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
+            cat > scripts/out/README-Windows.txt <<'EOF'
+          This archive should contain the built WSA packages.
+          Build produced no outputs — check build logs for errors.
+          EOF
+          fi
+          ls -la scripts/out || true
+          ls -la scripts/*.zip || true
+
+      - name: Create Windows-friendly zip fallback (if needed)
+        if: ${{ always() }}
+        run: |
+          mkdir -p scripts/out
+          (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
+          if [ -n "$(ls -A ../output 2>/dev/null)" ]; then
+            (cd .. && zip -r -q MagiskOnWSA-output.zip output/*) || true
+          fi
+          ls -la scripts/*.zip ../output/*.zip ../MagiskOnWSA-output.zip || true
+
+      - name: Upload artifact(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: WSA-LSPosed-GApps
+          path: |
+            scripts/*.zip
+            output/*.zip
+            scripts/out/*.zip
+            ../MagiskOnWSA-output.zip
