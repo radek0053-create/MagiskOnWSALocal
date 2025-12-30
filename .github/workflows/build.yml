@@ -42,8 +42,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
+      - name: Inspect environment & files (for debugging)
+        if: ${{ always() }}
+        run: |
+          echo "=== pwd ==="
+          pwd
+          echo "=== TERM before ==="
+          echo "TERM=$TERM"
+          echo "=== env ==="
+          env | sort
+          echo "=== ls scripts ==="
+          ls -la scripts || true
+          echo "=== ls scripts/out ==="
+          ls -la scripts/out || true
+          echo "=== disk usage ==="
+          df -h || true
+
       - name: Run build (LSPosed + Play Services)
         working-directory: scripts
+        env:
+          TERM: xterm-256color
         run: |
           chmod +x run.sh
           ./run.sh \
@@ -55,24 +73,25 @@ jobs:
             --magisk-ver stable \
             --lsposed-ver latest
 
-      - name: Package for Windows
-        if: ${{ success() }}
+      - name: Package for Windows (always create artifact for debugging)
+        if: ${{ always() }}
         run: |
-          # ensure out exists and add a short README for Windows users
           mkdir -p scripts/out
-          cat > scripts/out/README-Windows.txt <<'EOF'
-          This archive contains the built WSA packages created by the CI.
-          Unzip on Windows and follow repository README for installation instructions.
-          EOF
-          # create a Windows-friendly zip placed inside scripts/out
-          if [ -d scripts/out ]; then
-            (cd scripts && zip -r out/WSA-LSPosed-GApps-windows.zip out/*) || true
-          else
-            echo "No out directory found. Nothing to package." && exit 1
+          # Ensure there's something to zip; if out is empty, add README so artifact is always produced
+          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
+            cat > scripts/out/README-Windows.txt <<'EOF'
+This archive contains the built WSA packages created by the CI.
+The build step failed or produced no outputs; attach logs and inspect run for errors.
+EOF
           fi
+          # Create Windows-friendly zip with top-level contents of scripts/out
+          (cd scripts/out && zip -r ../WSA-LSPosed-GApps-windows.zip .) || true
+          echo "Zip files created:"
+          ls -la scripts/*.zip || true
 
-      - name: Upload artifact
+      - name: Upload artifact (always)
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: WSA-LSPosed-GApps
-          path: scripts/out/*.zip
+          path: scripts/*.zip
