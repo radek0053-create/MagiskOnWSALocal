@@ -1,4 +1,4 @@
-name: Build WSA (LSPosed + Play Services)
+name: Build WSA (Magisk + GApps, non-interactive)
 
 on:
   workflow_dispatch:
@@ -29,32 +29,32 @@ jobs:
             lzip \
             ca-certificates
 
-      - name: Install Python dependencies
+      - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Run WSA build (non-interactive)
+      - name: Run WSA build (build.sh, non-interactive)
         working-directory: scripts
         run: |
           chmod +x build.sh
+          set -eux
           ./build.sh \
             --arch x64 \
             --release-type retail \
-            --gapps-brand MindTheGapps \
-            --gapps-ver stable \
             --root-sol magisk \
             --magisk-ver stable \
-            --lsposed-ver latest \
+            --install-gapps \
             --compress-format zip
 
       - name: Verify output
         run: |
-          ls -lah scripts/out
-          test -n "$(ls scripts/out/*.zip 2>/dev/null)"
+          echo "=== output directory ==="
+          ls -la output
+          test -n "$(ls output/*.zip 2>/dev/null)"
 
-      - name: Upload WSA artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WSA-LSPosed-PlayServices
-          path: scripts/out/*.zip
+          name: WSA-Magisk-GApps
+          path: output/*.zip
