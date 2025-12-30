@@ -8,17 +8,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Python (projekt ho potřebuje pro pomocné skripty)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # 3️⃣ Systémové závislosti (oficiální minimum pro MagiskOnWSALocal)
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -32,12 +29,10 @@ jobs:
             python3-pip \
             ca-certificates
 
-      # 4️⃣ Python requirements (jsou v scripts/)
       - name: Install Python requirements
         run: |
           pip install -r scripts/requirements.txt
 
-      # 5️⃣ Spuštění oficiálního build skriptu
       - name: Run build (LSPosed + Play Services)
         run: |
           cd scripts
@@ -49,11 +44,9 @@ jobs:
             --gapps-ver stable \
             --root-sol magisk \
             --magisk-ver stable \
-            --lsposed
+            --lsposed-ver latest
 
-      # 6️⃣ Upload výsledného ZIPu
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WSA-LSPosed-GApps
-          path: scripts/out/*.zip
+          nam
