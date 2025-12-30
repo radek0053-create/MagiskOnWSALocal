@@ -1,10 +1,4 @@
-# CI: Build WSA with LSPosed + Play Services (non-interactive)
-# Notes:
-# - Use non-interactive build.sh (avoids run.sh interactive dialogs).
-# - Ask build.sh to compress output as zip (--compress-format zip) so CI can upload it directly.
-# - If build produces no outputs we add a small README so artifact is always produced.
-# - Cache pip, install needed system deps (zip already included).
-name: Build WSA with LSPosed + Play Services
+name: Build WSA (Magisk + GApps, non-interactive)
 
 on:
   workflow_dispatch:
@@ -35,78 +29,37 @@ jobs:
             ca-certificates \
             zip
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Run non-interactive build (build.sh)
-        working-directory: scripts
-        env:
-          # keep CI environment variables but do not force interactive UI
-          CI: "true"
+      - name: Verify build script
         run: |
-          set -euo pipefail
+          echo "=== scripts directory ==="
+          ls -la scripts
+          echo "=== build.sh ==="
+          ls -la scripts/build.sh
+
+      - name: Run build.sh (non-interactive)
+        working-directory: scripts
+        run: |
           chmod +x build.sh
-          # Use build.sh instead of run.sh to avoid interactive dialogs.
-          # Ask for zip compression so the build produces a Windows-friendly zip.
+          set -eux
           ./build.sh \
             --arch x64 \
             --release-type retail \
-            --gapps-brand MindTheGapps \
-            --gapps-ver stable \
             --root-sol magisk \
             --magisk-ver stable \
-            --lsposed-ver latest \
-            --compress-format zip
+            --install-gapps
 
-      - name: Ensure artifact exists (add README if empty) and list outputs
+      - name: Verify build output
         run: |
-          mkdir -p scripts/out
-          # if build.sh wrote to output/ (repo root), copy zip(s) into scripts/out for consistency
-          if [ -d ../output ]; then
-            cp -v ../output/*.zip scripts/ 2>/dev/null || true
-            cp -v ../output/*.zip scripts/out/ 2>/dev/null || true
-          fi
-          if [ -z "$(ls -A scripts/out 2>/dev/null)" ]; then
-            cat > scripts/out/README-Windows.txt <<'EOF'
-          This archive contains the built WSA packages created by the CI.
-          The build step failed or produced no outputs; attach logs and inspect run for errors.
-          EOF
-          fi
-          echo "Contents of scripts/out:"
-          ls -la scripts/out || true
-          echo "Any zips we have in scripts/:"
-          ls -la scripts/*.zip || true
-          echo "Any zips we have in output/:"
-          ls -la output/*.zip || true
-
-      - name: Create Windows-friendly zip fallback (if needed)
-        if: ${{ always() }}
-        run: |
-          mkdir -p scripts/out
-          # If build created zip in ../output, ensure a copy exists in scripts/ for consistent upload
-          cp -v ../output/*.zip scripts/ 2>/dev/null || true
-          # create top-level zip that contains the contents of scripts/out (Windows-friendly)
-          (cd scripts && zip -r -q WSA-LSPosed-GApps-windows.zip out/*) || true
-          echo "Top-level zip created (if any):"
-          ls -la scripts/*.zip || true
-          echo "Also list output/*.zip:"
-          ls -la output/*.zip || true
+          echo "=== output directory ==="
+          ls -la output
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WSA-LSPosed-GApps
-          path: |
-            scripts/*.zip
-            output/*.zip
-            scripts/out/*.zip
+          name: WSA-Magisk-GApps
+          path: output/*
