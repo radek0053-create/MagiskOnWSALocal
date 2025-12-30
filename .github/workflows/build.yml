@@ -1,4 +1,4 @@
-name: Build WSA (Magisk + GApps, non-interactive)
+name: Build WSA (simple, zip output)
 
 on:
   workflow_dispatch:
@@ -8,37 +8,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install system dependencies
+      - name: Install deps
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            git \
-            wget \
-            unzip \
-            zip \
-            tar \
-            xz-utils \
-            lzip \
-            ca-certificates
+            git wget unzip zip tar xz-utils lzip ca-certificates
 
       - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scripts/requirements.txt
 
-      - name: Run build.sh (correct parameters)
+      - name: Build WSA (build.sh)
         working-directory: scripts
         run: |
           chmod +x build.sh
-          set -eux
+          set -e
           ./build.sh \
             --arch x64 \
             --release-type retail \
@@ -47,13 +40,13 @@ jobs:
             --install-gapps \
             --compress-format zip
 
-      - name: Verify output
+      - name: Check output
         run: |
-          ls -la output
-          test -n "$(ls output/*.zip 2>/dev/null)"
+          ls -lah output
+          test -f output/*.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WSA-Magisk-GApps
+          name: WSA-ZIP
           path: output/*.zip
